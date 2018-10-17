@@ -28,24 +28,14 @@ class SPIMI:
             if term not in self.inverted_index:
                 # max_tf of doc wouldn't change, so do nothing
                 self.inverted_index[term] = {'df': 1, 'postings': SortedDict(
-                    {doc: {'tf': 1, 'max_tf': self._get_max_tf(doc)}})}
+                    {doc: 1})}
             else:
                 val = self.inverted_index[term]
                 if doc in val['postings']:
-                    val['postings'][doc]['tf'] += 1
+                    val['postings'][doc] += 1
                 else:
-                    val['postings'][doc] = {'tf': 1, 'max_tf': self._get_max_tf(doc)}
+                    val['postings'][doc] = 1
                 # update max_tf
-                self.doc_info[doc]['max_tf'] = max(val['postings'][doc]['tf'],
-                                                   self._get_max_tf(doc))
+                self.doc_info[doc]['max_tf'] = max(val['postings'][doc], self._get_max_tf(doc))
                 val['df'] = len(val['postings'].keys())
                 self.inverted_index[term] = val
-
-
-if __name__ == '__main__':
-    import glob
-    from tokenizer import token_stream
-    tokens = token_stream(glob.glob('../../tokenizer/Cranfield/cranfield032*'))
-    indexer = SPIMI(tokens)
-    indexer.build_index()
-    print(list(indexer.inverted_index.keys()))

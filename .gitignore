@@ -107,3 +107,4 @@ venv.bak/
 
 # IntelliJ project
 .idea
+/sftp-config.json

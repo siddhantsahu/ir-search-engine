@@ -1,6 +1,7 @@
 import re
 
 import spacy
+from tqdm import tqdm
 
 # Compiled regex for tokenizer
 HTML_TAGS = re.compile(r"</*\w+>", re.IGNORECASE)
@@ -46,9 +47,11 @@ def lemmatize(line, doc_id):
 
 def token_stream(files):
     """Generates a stream of tokens from a list of files."""
-    for doc_id, file in enumerate(files):
+    for doc_id, file in tqdm(enumerate(files)):
         with open(file, 'r') as fp:
-            for line in fp:
+            # lines = [x.decode('utf-8') for x in fp.readlines()] # python 2.7 unicode issue
+            lines = fp.readlines()  # python 3.7
+            for line in lines:
                 line = pre_process(line)
                 for term_doc in lemmatize(line, doc_id):
                     yield term_doc
