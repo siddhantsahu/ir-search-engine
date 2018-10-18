@@ -5,8 +5,7 @@ STOPWORDS = frozenset(stopwords.words('english'))
 
 
 class SPIMI:
-    def __init__(self, ts):
-        self.tokens = ts
+    def __init__(self):
         self.doc_info = {}  # to store doc_len and max_tf for docs
         self.inverted_index = SortedDict()
 
@@ -14,9 +13,14 @@ class SPIMI:
         """Helper function to get max_tf for a doc"""
         return self.doc_info[doc_id]['max_tf']
 
-    def build_index(self):
-        """Builds inverted index using single pass in-memory indexing."""
-        for term_doc_pair in self.tokens:
+    def build_index(self, tokens):
+        """Builds inverted index using single pass in-memory indexing.
+
+        Args
+        ----
+        tokens: token stream
+        """
+        for term_doc_pair in tokens:
             term, doc = term_doc_pair
             if doc not in self.doc_info:
                 self.doc_info[doc] = {'doc_len': 1, 'max_tf': 1}
