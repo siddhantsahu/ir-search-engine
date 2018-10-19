@@ -11,8 +11,7 @@ NON_ALPHANUMERIC = re.compile(r"[^a-zA-Z0-9\-\'\.]")
 ONLY_NUMBERS = re.compile(r"^(\d\W*)+$")
 
 # spacy English model
-NLP = spacy.load('en_core_web_sm')
-
+NLP = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
 
 def pre_process(line):
     """Pre-processes a line by stripping HTML tags and removing punctuation except dots (.),
@@ -53,5 +52,5 @@ def token_stream(files):
             lines = fp.readlines()  # python 3.7
             for line in lines:
                 line = pre_process(line)
-                for term_doc in lemmatize(line, doc_id):
+                for term_doc in lemmatize(line, doc_id + 1e10):
                     yield term_doc
