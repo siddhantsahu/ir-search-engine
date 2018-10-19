@@ -52,5 +52,5 @@ def token_stream(files):
             lines = fp.readlines()  # python 3.7
             for line in lines:
                 line = pre_process(line)
-                for term_doc in lemmatize(line, doc_id + 1e10):
+                for term_doc in lemmatize(line, doc_id):
                     yield term_doc
