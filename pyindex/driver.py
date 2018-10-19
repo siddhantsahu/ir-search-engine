@@ -10,5 +10,4 @@ if __name__ == '__main__':
     indexer = SPIMI()
     start = time.time()
     indexer.build_index(tokens)
-    with open('index1.uncompressed', 'wb') as db:
-        pickle.dump(indexer, db)
+    indexer.to_disk('data/')

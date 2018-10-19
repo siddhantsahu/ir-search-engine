@@ -1,3 +1,6 @@
+import os
+import struct
+
 from nltk.corpus import stopwords
 from sortedcontainers import SortedDict
 
@@ -43,3 +46,21 @@ class SPIMI:
                 self.doc_info[doc]['max_tf'] = max(val['postings'][doc], self._get_max_tf(doc))
                 val['df'] = len(val['postings'].keys())
                 self.inverted_index[term] = val
+
+    def to_disk(self, directory):
+        """Writes the dictionary to binary files."""
+        ptr_file = os.path.join(directory, 'ptr')
+        index_file = os.path.join(directory, 'index')
+        with open(ptr_file, 'wb') as pointers, open(index_file, 'wb') as index:
+            for term, val in self.inverted_index.items():
+                df = val['df']  # unsigned integer, I
+                term_ptr = index.tell()  # term pointer
+                postings_ptr = index.tell() + index.write(
+                    struct.pack('{}s'.format(len(term)), term.encode('ascii')))  # write term
+                # write all postings now
+                for doc_id, tf in val['postings'].items():  # in increasing order of doc_id
+                    index.write(struct.pack('I', doc_id))
+                    index.write(struct.pack('I', tf))
+                pointers.write(struct.pack('I', df))  # write document frequency
+                pointers.write(struct.pack('I', term_ptr))
+                pointers.write(struct.pack('I', postings_ptr))
