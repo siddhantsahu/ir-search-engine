@@ -1,5 +1,7 @@
+import math
 import os
-import struct
+from collections import OrderedDict
+from struct import pack, calcsize
 
 from nltk.corpus import stopwords
 from sortedcontainers import SortedDict
@@ -34,8 +36,7 @@ class SPIMI:
                 continue
             if term not in self.inverted_index:
                 # max_tf of doc wouldn't change, so do nothing
-                self.inverted_index[term] = {'df': 1, 'postings': SortedDict(
-                    {doc: 1})}
+                self.inverted_index[term] = {'df': 1, 'postings': OrderedDict({doc: 1})}
             else:
                 val = self.inverted_index[term]
                 if doc in val['postings']:
@@ -49,18 +50,36 @@ class SPIMI:
 
     def to_disk(self, directory):
         """Writes the dictionary to binary files."""
-        ptr_file = os.path.join(directory, 'ptr')
-        index_file = os.path.join(directory, 'index')
-        with open(ptr_file, 'wb') as pointers, open(index_file, 'wb') as index:
+        ptr_file = os.path.join(directory, 'uncompressed.ptr')
+        dictionary_file = os.path.join(directory, 'uncompressed.dictionary')
+        posting_file = os.path.join(directory, 'uncompressed.postings')
+
+        # largest term in dictionary
+        max_length = max([len(x) for x in self.inverted_index.keys()])
+
+        with open(ptr_file, 'wb') as pointer, open(dictionary_file, 'wb') as dictionary, \
+                open(posting_file, 'wb') as posting:
             for term, val in self.inverted_index.items():
-                df = val['df']  # unsigned integer, I
-                term_ptr = index.tell()  # term pointer
-                postings_ptr = index.tell() + index.write(
-                    struct.pack('{}s'.format(len(term)), term.encode('ascii')))  # write term
-                # write all postings now
-                for doc_id, tf in val['postings'].items():  # in increasing order of doc_id
-                    index.write(struct.pack('I', doc_id))
-                    index.write(struct.pack('I', tf))
-                pointers.write(struct.pack('I', df))  # write document frequency
-                pointers.write(struct.pack('I', term_ptr))
-                pointers.write(struct.pack('I', postings_ptr))
+                term_ptr = dictionary.tell()
+                posting_ptr = posting.tell()
+                dictionary.write(
+                    pack('{}p'.format(max_length), term.encode('ascii')))  # pascal string
+                postings_length = len(val['postings'].keys())
+                # ideally, postings list would be a power of 2, for uncompressed version
+                if postings_length > 1:
+                    uncompressed_postings_list_length = math.ceil(math.log2(postings_length))
+                else:
+                    uncompressed_postings_list_length = 1
+                diff = max(postings_length, uncompressed_postings_list_length - postings_length)
+                for doc_id, tf in val['postings'].items():
+                    posting.write(pack('I', doc_id))
+                    posting.write(pack('I', tf))
+                # 2 integers for each posting: doc id and term freq
+                # we need to write 2*diff number of empty integers 'I'
+                # or, 2*diff*size padding, where size = size of I / size of a pad
+                if diff:
+                    nr_of_paddings = 2 * diff * calcsize('I')
+                    posting.write(pack('{}x'.format(nr_of_paddings)))
+                pointer.write(pack('I', val['df']))
+                pointer.write(pack('I', term_ptr))
+                pointer.write(pack('I', posting_ptr))

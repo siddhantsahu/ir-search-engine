@@ -25,23 +25,22 @@ def post_process(token):
     needed."""
     token = PUNCT_START_END.sub('', token)
     token = ONLY_NUMBERS.sub('', token).strip()
-    token = PUNCT_ANYWHERE.sub('', token)
-    if len(token) > 1:
-        return token
-    elif token == 'PRON':
-        raise ValueError('Not a valid token')
-    else:
-        raise ValueError('Not a valid token')
-
+    results = PUNCT_ANYWHERE.split(token)
+    # filter
+    for t in results:
+        if len(t) > 1:
+            yield t
+        elif t == 'PRON':
+            continue
+        else:
+            continue
 
 def lemmatize(line, doc_id):
     """Lemmatize and tokenize a line found in some document."""
     doc = NLP(line)
     for token in doc:
-        try:
-            yield (post_process(token.lemma_), doc_id)
-        except ValueError:
-            continue  # discard this token
+        for el in post_process(token.lemma_):
+            yield (el, doc_id)
 
 
 def token_stream(files):
@@ -54,3 +53,17 @@ def token_stream(files):
                 line = pre_process(line)
                 for term_doc in lemmatize(line, doc_id):
                     yield term_doc
+
+if __name__ == '__main__':
+    import glob
+    res = list(token_stream(glob.glob('../../tokenizer/Cranfield/*')))
+    raw_lemmas = sorted(set([el[0] for el in res]))
+    processed = sorted(set([el[1] for el in res]))
+    with open('lemmas.txt', 'w') as fp:
+        for el in raw_lemmas:
+            fp.write(el)
+            fp.write('\n')
+    with open('processed.txt', 'w') as fp:
+        for el in processed:
+            fp.write(el)
+            fp.write('\n')
