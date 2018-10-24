@@ -21,9 +21,6 @@ if __name__ == '__main__':
         with open('index.pkl', 'wb') as fp:
             pickle.dump(indexer, fp)
     indexer.to_disk('data/')
-    uncompressed_to_disk = time.time()
-    print('Wrote uncompressed index to disk in', uncompressed_to_disk - end, 'sec')
     compressor = Compressed(indexer)
     compressor.blocking_gamma('data/', k=8)
-    compressed_to_disk = time.time()
-    print('Wrote compressed index to disk in', compressed_to_disk - uncompressed_to_disk, 'sec')
+    compressor.frontcoding_delta('data/', k=8)
