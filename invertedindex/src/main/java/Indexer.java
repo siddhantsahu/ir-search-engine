@@ -67,6 +67,10 @@ public class Indexer {
             docId += 1;
         }
 
-        System.out.println(spimi);
+        try {
+            spimi.writeToDisk();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

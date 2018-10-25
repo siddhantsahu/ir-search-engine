@@ -1,3 +1,10 @@
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 public class SPIMI {
@@ -34,6 +41,33 @@ public class SPIMI {
             addToDictionary(term, docId);
         }
         invertedIndex.computeIfPresent(term, (k, v) -> addToPostingList(v, docId));
+    }
+
+    public void writeToDisk() throws IOException, NoSuchFieldException, IllegalAccessException {
+        Path index = Paths.get("uncompressed.index");
+        Path ptr = Paths.get("uncompressed.pointers");
+        // uncompressed index has fixed-width terms
+        int fixedWidth = 0;
+        for (String term : invertedIndex.keySet()) {
+            if (fixedWidth < term.length()) {
+                fixedWidth = term.length();
+            }
+        }
+        try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(index,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE));
+             OutputStream pointers = new BufferedOutputStream(Files.newOutputStream(ptr,
+                     StandardOpenOption.CREATE,
+                     StandardOpenOption.TRUNCATE_EXISTING,
+                     StandardOpenOption.WRITE))) {
+            for (String term : invertedIndex.keySet()) {
+                out.write(ByteHelper.stringToFixedWidthBytes(term, fixedWidth));
+            }
+            for (PostingsEntry p : invertedIndex.values()) {
+                out.write(ByteHelper.mapToFixedWidthBytes(p.getPostingsList()));
+            }
+        }
     }
 
     @Override

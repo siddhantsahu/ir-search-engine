@@ -1,14 +1,16 @@
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 public class PostingsEntry {
     private int documentFrequency;
+    private LinkedHashMap<Integer, Integer> postingsList;
 
     public int getDocumentFrequency() {
         return documentFrequency;
     }
 
-    private Map<Integer, Integer> postingsList;
+    public LinkedHashMap<Integer, Integer> getPostingsList() {
+        return postingsList;
+    }
 
     public PostingsEntry(int docId) {
         this.documentFrequency = 1;
