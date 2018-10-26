@@ -1,7 +1,4 @@
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +7,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 public class SPIMI {
+    private final String outFolder;
     public static final String[] SET_VALUES = new String[]{"a", "all", "an", "and", "any", "are", "as", "be", "been",
             "but", "by ", "few", "for", "have", "he", "her", "here", "him", "his", "how", "i", "in", "is", "it", "its",
             "many", "me", "my", "none", "of", "on ", "or", "our", "she", "some", "the", "their", "them", "there",
@@ -18,6 +16,15 @@ public class SPIMI {
     public static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(SET_VALUES));
     private Map<Integer, DocumentInfo> docInfo = new HashMap<>();
     private Map<String, PostingsEntry> invertedIndex = new TreeMap<>();
+
+    public SPIMI(String outFolder) {
+        this.outFolder = outFolder;
+        // create folder if it does not exist
+        File directory = new File(outFolder);
+        if (!directory.exists()) {
+            directory.mkdirs(); // creates parents too
+        }
+    }
 
     private void addToDictionary(String term, Integer docId) {
         // update document info before proceeding
@@ -116,9 +123,27 @@ public class SPIMI {
         return outStream.toByteArray();
     }
 
+    private void docInfoToDisk(Path p) throws IOException {
+        try (OutputStream out = new BufferedOutputStream((Files.newOutputStream(p,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE)))) {
+            // format: docId, maxTf, docLen - each 4 bytes
+            for (Map.Entry<Integer, DocumentInfo> entry : this.docInfo.entrySet()) {
+                out.write(Utils.intToBytes(entry.getKey()));
+                out.write(entry.getValue().toBytes());
+            }
+        }
+    }
+
     public void createUncompressedIndex() throws IOException {
-        Path index = Paths.get("uncompressed.index");
-        Path pointer = Paths.get("uncompressed.pointers");
+        // TODO: create output directory if it doesn't exist
+        Path index = Paths.get(outFolder, "uncompressed.index");
+        Path pointer = Paths.get(outFolder, "uncompressed.pointers");
+
+        // write doc info
+        docInfoToDisk(Paths.get(outFolder, "uncompressed.docinfo"));
+
         // space occupied by the longest term in the dictionary
         int fixedWidth = 0;
         for (String term : invertedIndex.keySet()) {
@@ -159,15 +184,21 @@ public class SPIMI {
         }
     }
 
-    public void createCompressedIndex(int blockSize, String compressionCode, boolean frontCodingEnabled)
+    public void createCompressedIndex(int blockSize,
+                                      String compressionCode,
+                                      boolean frontCodingEnabled)
             throws IOException {
         // compressed index with blocking and gamma
         String frontCodeText = "";  // for appropriate names of files
         if (frontCodingEnabled) {
             frontCodeText = ".frontcoding";
         }
-        Path index = Paths.get("compressed." + compressionCode + frontCodeText + ".index");
-        Path pointer = Paths.get("compressed." + compressionCode + frontCodeText + ".pointers");
+        // write doc info
+        docInfoToDisk(Paths.get(outFolder, "compressed." + compressionCode + frontCodeText + ".docinfo"));
+
+        // start writing the index
+        Path index = Paths.get(outFolder, "compressed." + compressionCode + frontCodeText + ".index");
+        Path pointer = Paths.get(outFolder, "compressed." + compressionCode + frontCodeText + ".pointers");
 
         try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(index,
                 StandardOpenOption.CREATE,

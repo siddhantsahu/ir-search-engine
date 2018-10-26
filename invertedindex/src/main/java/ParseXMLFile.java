@@ -5,12 +5,11 @@ import org.xml.sax.helpers.DefaultHandler;
 public class ParseXMLFile extends DefaultHandler {
     private boolean title = false;
     private boolean text = false;
+    private StringBuilder textField = new StringBuilder();
 
     public StringBuilder getTextField() {
         return textField;
     }
-
-    private StringBuilder textField = new StringBuilder();
 
     @Override
     public void startElement(String uri,

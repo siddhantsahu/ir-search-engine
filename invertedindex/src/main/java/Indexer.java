@@ -10,19 +10,28 @@ import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 
 public class Indexer {
+    private static Stemmer stemmer = new Stemmer();
+    private static Map<String, String> stemLookup = new HashMap<>();    // to cache stemmer results
+
+    private static String stemWord(String word) {
+        String result = stemLookup.getOrDefault(word, stemmer.stem(word));
+        stemLookup.putIfAbsent(word, result);
+        return result;
+    }
 
     public static void main(String args[]) throws IOException {
-        String folder = "/home/siddhant/Documents/Projects/ir_homeworks/tokenizer/Cranfield";
+        // parse arguments
+        boolean useStemming = args[0].equalsIgnoreCase("stem") ? true : false;
+        String folder = args[1];    // folder having text documents
+        String outFolder = args[2];   // store the binary files in this directory
+
         File collection = new File(folder);
         File[] files = collection.listFiles();
 
-        SPIMI spimi = new SPIMI();
+        SPIMI spimi = new SPIMI(outFolder);
 
         // build pipeline for lemmatization
         Properties props = new Properties();
@@ -58,8 +67,13 @@ public class Indexer {
                 for (CoreLabel token : sentence.get(CoreAnnotations.TokensAnnotation.class)) {
                     String lemma = token.get(CoreAnnotations.LemmaAnnotation.class);
                     TokenFilter tokenFilterObj = new TokenFilter(lemma);
-                    for (String l : tokenFilterObj.getTokens()) {
-                        spimi.invert(l, docId);
+                    for (String word : tokenFilterObj.getTokens()) {
+                        // build index with stems
+                        String term = word;
+                        if (useStemming) {
+                            term = stemWord(word);
+                        }
+                        spimi.invert(term, docId);
                     }
                 }
             }

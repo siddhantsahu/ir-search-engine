@@ -11,6 +11,17 @@ public class TokenFilter {
 
     private List<String> tokens = new ArrayList<>();
 
+    public TokenFilter(String token) {
+        token = filterToken(token);
+        String[] results = splitToken(token);
+        for (String t : results) {
+            String filteredToken = filterToken(t);
+            if (!"".equals(filteredToken)) {
+                this.tokens.add(filteredToken);
+            }
+        }
+    }
+
     private String[] splitToken(String token) {
         Matcher m1 = startsWithNumber.matcher(token);
         Matcher m2 = dashes.matcher(token);
@@ -35,16 +46,5 @@ public class TokenFilter {
 
     public List<String> getTokens() {
         return tokens;
-    }
-
-    public TokenFilter(String token) {
-        token = filterToken(token);
-        String[] results = splitToken(token);
-        for (String t : results) {
-            String filteredToken = filterToken(t);
-            if (!"".equals(filteredToken)) {
-                this.tokens.add(filteredToken);
-            }
-        }
     }
 }
