@@ -67,10 +67,7 @@ public class Indexer {
             docId += 1;
         }
 
-        try {
-            spimi.writeToDisk();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        spimi.createUncompressedIndex();
+        spimi.createCompressedIndex(8);
     }
 }
