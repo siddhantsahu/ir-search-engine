@@ -1,4 +1,5 @@
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -44,6 +45,77 @@ public class SPIMI {
         invertedIndex.computeIfPresent(term, (k, v) -> addToPostingList(v, docId));
     }
 
+    private byte[] postingListToBytes(LinkedHashMap<Integer, Integer> m) {
+        byte[] result = new byte[m.size() * 2 * 4];
+        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
+            byte[] docIdBytes = Utils.intToBytes(entry.getKey());
+            byte[] tfBytes = Utils.intToBytes(entry.getValue());
+            System.arraycopy(docIdBytes, 0, result, 0, docIdBytes.length);
+            System.arraycopy(tfBytes, 0, result, docIdBytes.length, tfBytes.length);
+        }
+        return result;
+    }
+
+    private byte[] compressedPostingListToBytes(LinkedHashMap<Integer, Integer> m, String compressionCode)
+            throws IOException {
+        // https://stackoverflow.com/a/9133993/2986835
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        int previousDocId = -1; // -1 means there is no previous doc id
+        // write compressed posting list for current term
+        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
+            // key is doc id and value is term frequency
+            byte[] docIdBytes;
+            if (previousDocId == -1) {  // first doc, so write doc id instead of gaps
+                docIdBytes = Utils.intToBytes(entry.getKey());
+            } else {    // write gaps
+                int gap = entry.getKey() - previousDocId;
+                docIdBytes = Utils.gapToBytes(gap, compressionCode);
+            }
+            byte[] tfBytes = Utils.intToBytes(entry.getValue());
+            outStream.write(docIdBytes);
+            outStream.write(tfBytes);
+            previousDocId = entry.getKey(); // update previous doc id for next iteration
+        }
+        return outStream.toByteArray();
+    }
+
+    private byte[] blockOfTermsToBytes(List<String> block) throws IOException {
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        for (String term : block) {
+            byte len = (byte) term.length();    // max length around 25
+            byte[] lenBytes = ByteBuffer.allocate(1).put(len).array();  // store length of term
+            byte[] termBytes = term.getBytes();
+            outStream.write(lenBytes);
+            outStream.write(termBytes);
+        }
+        return outStream.toByteArray();
+    }
+
+    private byte[] frontCodedBlockToBytes(List<String> block) throws IOException {
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        String commonPrefix = Utils.longestCommonPrefix(block.toArray(new String[0]));
+        int prefixLength = commonPrefix.length();
+        for (int i = 0; i < block.size(); i++) {
+            // for the first term, write prefix followed by a *
+            byte len;
+            byte[] lenBytes;
+            byte[] termBytes;
+            if (i == 0) {
+                len = (byte) block.get(i).length();
+                termBytes = new String(commonPrefix + "*" +  // * marks end of prefix
+                        Utils.slice_start(block.get(i), prefixLength)).getBytes();
+            } else {
+                String extraCharacters = Utils.slice_start(block.get(i), prefixLength); // after stripping prefix
+                len = (byte) extraCharacters.length();
+                termBytes = extraCharacters.getBytes();
+            }
+            lenBytes = ByteBuffer.allocate(1).put(len).array();
+            outStream.write(lenBytes);
+            outStream.write(termBytes);
+        }
+        return outStream.toByteArray();
+    }
+
     public void createUncompressedIndex() throws IOException {
         Path index = Paths.get("uncompressed.index");
         Path pointer = Paths.get("uncompressed.pointers");
@@ -68,17 +140,17 @@ public class SPIMI {
             Integer postingsReference;
             Integer currentFilePosition = 0;
             for (Map.Entry<String, PostingsEntry> entry : invertedIndex.entrySet()) {
-                byte[] termBytes = ByteUtils.stringToFixedWidthBytes(entry.getKey(), fixedWidth);
-                byte[] postingBytes = ByteUtils.postingListToBytes(entry.getValue().getPostingsList());
-                byte[] documentFrequency = ByteUtils.intToBytes(entry.getValue().getDocumentFrequency());
+                byte[] termBytes = Utils.stringToFixedWidthBytes(entry.getKey(), fixedWidth);
+                byte[] postingBytes = this.postingListToBytes(entry.getValue().getPostingsList());
+                byte[] documentFrequency = Utils.intToBytes(entry.getValue().getDocumentFrequency());
                 // update references to terms and postings
                 ref.write(documentFrequency);
                 currentFilePosition += documentFrequency.length;
                 termReference = currentFilePosition;
-                ref.write(ByteUtils.intToBytes(termReference));
+                ref.write(Utils.intToBytes(termReference));
                 currentFilePosition += termBytes.length;
                 postingsReference = currentFilePosition;
-                ref.write(ByteUtils.intToBytes(postingsReference));
+                ref.write(Utils.intToBytes(postingsReference));
                 currentFilePosition += postingBytes.length;
                 // actually write the terms and postings
                 out.write(termBytes);
@@ -87,10 +159,15 @@ public class SPIMI {
         }
     }
 
-    public void createCompressedIndex(int blockSize) throws IOException {
+    public void createCompressedIndex(int blockSize, String compressionCode, boolean frontCodingEnabled)
+            throws IOException {
         // compressed index with blocking and gamma
-        Path index = Paths.get("compressed.gamma.index");
-        Path pointer = Paths.get("compressed.gamma.pointers");
+        String frontCodeText = "";  // for appropriate names of files
+        if (frontCodingEnabled) {
+            frontCodeText = ".frontcoding";
+        }
+        Path index = Paths.get("compressed." + compressionCode + frontCodeText + ".index");
+        Path pointer = Paths.get("compressed." + compressionCode + frontCodeText + ".pointers");
 
         try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(index,
                 StandardOpenOption.CREATE,
@@ -108,58 +185,48 @@ public class SPIMI {
 
             // write dictionary as a string
             int numberOfTerms = 0;
+            List<String> blockOfTerms = new ArrayList<>(blockSize);
             for (String term : invertedIndex.keySet()) {
                 if (numberOfTerms % blockSize == 0) {
                     // store term reference
                     termReferences.add(currentFilePosition);
+                    // write compressed block to file
+                    if (!blockOfTerms.isEmpty()) {
+                        byte[] compressedBlock;
+                        if (!frontCodingEnabled) {
+                            compressedBlock = blockOfTermsToBytes(blockOfTerms);
+                        } else {
+                            compressedBlock = frontCodedBlockToBytes(blockOfTerms);
+                        }
+                        out.write(compressedBlock);
+                        currentFilePosition += compressedBlock.length;
+                        blockOfTerms.clear();
+                    }
+                } else {
+                    blockOfTerms.add(term);
                 }
-                // write term length as a byte and the actual term
-                byte len = (byte) term.length();    // max length around 25
-                byte[] lenBytes;
-                lenBytes = ByteBuffer.allocate(1).put(len).array();
-                byte[] termBytes = term.getBytes();
-                currentFilePosition += lenBytes.length + termBytes.length;
-                out.write(lenBytes);
-                out.write(termBytes);
                 numberOfTerms += 1;
             }
 
             // compress postings list using gamma-encoded gaps and write to file
             for (PostingsEntry p : invertedIndex.values()) { // order of values correspond to keys, because TreeMap
-                int previousDocId = -1; // -1 means there is no previous doc id
                 documentFrequencies.add(p.getDocumentFrequency());
                 postingReferences.add(currentFilePosition);
-
-                // write compressed posting list for current term
-                for (Map.Entry<Integer, Integer> entry : p.getPostingsList().entrySet()) {
-                    // key is doc id and value is term frequency
-                    if (previousDocId == -1) {  // first doc, so write doc id instead of gaps
-                        byte[] docIdBytes = ByteUtils.intToBytes(entry.getKey());
-                        out.write(docIdBytes);
-                        currentFilePosition += docIdBytes.length;
-                    } else {    // write gaps
-                        int gap = entry.getKey() - previousDocId;
-                        byte[] gapBytes = ByteUtils.gapToBytes(gap, "gamma");
-                        out.write(gapBytes);
-                        currentFilePosition += gapBytes.length;
-                    }
-                    byte[] tfBytes = ByteUtils.intToBytes(entry.getValue());
-                    out.write(tfBytes);
-                    currentFilePosition += tfBytes.length;
-                    previousDocId = entry.getKey(); // update previous doc id for next iteration
-                }
+                byte[] postingBytes = this.compressedPostingListToBytes(p.getPostingsList(), compressionCode);
+                out.write(postingBytes);
+                currentFilePosition += postingBytes.length;
             } // end writing posting list
 
             // write term pointers and posting pointers
             int ixTerm = 0;
             for (int i = 0; i < documentFrequencies.size(); i++) {
-                ref.write(ByteUtils.intToBytes(documentFrequencies.get(i)));
+                ref.write(Utils.intToBytes(documentFrequencies.get(i)));
                 if (i % blockSize == 0) {
                     // write term pointer
-                    ref.write(ByteUtils.intToBytes(termReferences.get(ixTerm)));
+                    ref.write(Utils.intToBytes(termReferences.get(ixTerm)));
                     ixTerm += 1;
                 }
-                ref.write(ByteUtils.intToBytes(postingReferences.get(i)));
+                ref.write(Utils.intToBytes(postingReferences.get(i)));
             }
         }   // end writing to file
     }

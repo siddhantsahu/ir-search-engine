@@ -68,6 +68,7 @@ public class Indexer {
         }
 
         spimi.createUncompressedIndex();
-        spimi.createCompressedIndex(8);
+        spimi.createCompressedIndex(8, "gamma", false);
+        spimi.createCompressedIndex(8, "delta", true);
     }
 }

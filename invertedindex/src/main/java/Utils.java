@@ -1,9 +1,7 @@
 import java.nio.ByteBuffer;
 import java.util.BitSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
-public class ByteUtils {
+public class Utils {
     public static byte[] stringToFixedWidthBytes(String str, int width) {
         byte[] result = new byte[width];
         System.arraycopy(str.getBytes(), 0, result, 0, str.length());
@@ -40,16 +38,35 @@ public class ByteUtils {
         return bb.array();
     }
 
+    public static String longestCommonPrefix(String[] strings) {
+        // https://codereview.stackexchange.com/a/46967
+        if (strings.length == 0) {
+            return "";   // Or maybe return null?
+        }
+
+        for (int prefixLen = 0; prefixLen < strings[0].length(); prefixLen++) {
+            char c = strings[0].charAt(prefixLen);
+            for (int i = 1; i < strings.length; i++) {
+                if (prefixLen >= strings[i].length() ||
+                        strings[i].charAt(prefixLen) != c) {
+                    // Mismatch found
+                    return strings[i].substring(0, prefixLen);
+                }
+            }
+        }
+        return strings[0];
+    }
+
     public static String gammaCode(final int n) {
         String binary = Integer.toBinaryString(n);
-        String offset = ByteUtils.slice_start(binary, 1);
-        String length = ByteUtils.unary(offset.length());
+        String offset = Utils.slice_start(binary, 1);
+        String length = Utils.unary(offset.length());
         return length + offset;
     }
 
     public static String deltaCode(final int n) {
         String binary = Integer.toBinaryString(n);
-        String offset = ByteUtils.slice_start(binary, 1);
+        String offset = Utils.slice_start(binary, 1);
         String length = gammaCode(binary.length());
         return length + offset;
     }
@@ -67,15 +84,4 @@ public class ByteUtils {
         return bytes;
     }
 
-    public static byte[] postingListToBytes(LinkedHashMap<Integer, Integer> m) {
-        // times 2 is for key (doc id) and value (term frequency) and times 4 is for size of each integer
-        byte[] result = new byte[m.size() * 2 * 4];
-        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
-            byte[] docIdBytes = intToBytes(entry.getKey());
-            byte[] tfBytes = intToBytes(entry.getValue());
-            System.arraycopy(docIdBytes, 0, result, 0, docIdBytes.length);
-            System.arraycopy(tfBytes, 0, result, docIdBytes.length, tfBytes.length);
-        }
-        return result;
-    }
 }
