@@ -6,6 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Utility class with several helper functions to convert Java objects to bytes and other utility functions.
+ */
 public class Utils {
     public static byte[] stringToFixedWidthBytes(String str, int width) {
         byte[] result = new byte[width];

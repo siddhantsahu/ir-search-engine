@@ -8,17 +8,39 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
+/**
+ * Implements a variant of the single pass in-memory indexing algorithm as described in the textbook by Manning & others
+ * In the original single-pass algorithm, the dictionary is sorted after the program runs out of memory. In this case,
+ * we use a SortedMap instead of a HashMap to avoid sorting the dictionary at the end.
+ */
 public class SPIMI {
+    /**
+     * Write the index in this folder.
+     */
     private final String outFolder;
-    public static final String[] SET_VALUES = new String[]{"a", "all", "an", "and", "any", "are", "as", "be", "been",
+
+    private static final String[] SET_VALUES = new String[]{"a", "all", "an", "and", "any", "are", "as", "be", "been",
             "but", "by ", "few", "for", "have", "he", "her", "here", "him", "his", "how", "i", "in", "is", "it", "its",
             "many", "me", "my", "none", "of", "on ", "or", "our", "she", "some", "the", "their", "them", "there",
             "they", "that ", "this", "us", "was", "what", "when", "where", "which", "who", "why", "will", "with",
             "you", "your"};
-    public static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(SET_VALUES));
+    private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(SET_VALUES));
+
+    /**
+     * Maps document id to a data structure storing document related information.
+     */
     private Map<Integer, DocumentInfo> docInfo = new HashMap<>();
+
+    /**
+     * A SortedMap of dictionary to postings list.
+     */
     private Map<String, PostingsEntry> invertedIndex = new TreeMap<>();
 
+    /**
+     * Initializes the SPIMI algorithm.
+     *
+     * @param outFolder the index files will be stored here
+     */
     public SPIMI(String outFolder) {
         this.outFolder = outFolder;
         // create folder if it does not exist
@@ -36,6 +58,12 @@ public class SPIMI {
         return invertedIndex;
     }
 
+    /**
+     * Adds an unseen term to the dictionary.
+     *
+     * @param term  term in collection
+     * @param docId document id the term is found in
+     */
     private void addToDictionary(String term, Integer docId) {
         // update document info with term before proceeding (stopwords are counted in doc length)
         docInfo.putIfAbsent(docId, new DocumentInfo());
@@ -47,6 +75,15 @@ public class SPIMI {
         }
     }
 
+    /**
+     * Updates a term's posting list with the doc id seen. If the doc id is encountered for the first time, it is added
+     * to the end of the posting list. Since doc ids are seen in monotonically increasing order, the posting list is
+     * naturally sorted in ascending order. This is one of the key ideas of the SPIMI algorithm.
+     *
+     * @param pList the existing posting list of the term
+     * @param docId the doc id seen in the (term, doc) pair
+     * @return
+     */
     private PostingsEntry addToPostingList(PostingsEntry pList, int docId) {
         PostingsEntry postingList = pList.update(docId);
         docInfo.putIfAbsent(docId, new DocumentInfo());
@@ -54,6 +91,12 @@ public class SPIMI {
         return postingList;
     }
 
+    /**
+     * Called for every term, doc pair in the collection.
+     *
+     * @param term  term
+     * @param docId doc id
+     */
     public void invert(String term, Integer docId) {
         docInfo.putIfAbsent(docId, new DocumentInfo());
         if (!invertedIndex.containsKey(term)) {
@@ -62,6 +105,12 @@ public class SPIMI {
         invertedIndex.computeIfPresent(term, (k, v) -> addToPostingList(v, docId));
     }
 
+    /**
+     * Writes the document information to a binary file.
+     *
+     * @param p Path to the binary file
+     * @throws IOException
+     */
     private void docInfoToDisk(Path p) throws IOException {
         try (OutputStream out = new BufferedOutputStream((Files.newOutputStream(p,
                 StandardOpenOption.CREATE,
@@ -75,8 +124,14 @@ public class SPIMI {
         }
     }
 
+    /**
+     * Writes the uncompressed index to a binary file. Terms in the dictionary are stored in fixed width strings.
+     * A pointer file is created for deserializing the binary file. The pointer file has document frequency and
+     * references to the terms and posting list.
+     *
+     * @throws IOException
+     */
     public void createUncompressedIndex() throws IOException {
-        // TODO: create output directory if it doesn't exist
         Path index = Paths.get(outFolder, "uncompressed.index");
         Path pointer = Paths.get(outFolder, "uncompressed.pointers");
 
@@ -123,6 +178,16 @@ public class SPIMI {
         }
     }
 
+    /**
+     * Compresses the dictionary and postings list, and writes them to a binary file with pointers to term and posting
+     * list location.
+     *
+     * @param blockSize          Uses blocking to save space on storing term pointers, stores term pointer to every
+     *                           `blockSize`-th term
+     * @param compressionCode    Either "gamma" or "delta". Uses gamma codes and delta codes to compress the index
+     * @param frontCodingEnabled Frontcoding saves additional space by not storing common term prefixes repeatedly
+     * @throws IOException
+     */
     public void createCompressedIndex(int blockSize,
                                       String compressionCode,
                                       boolean frontCodingEnabled)

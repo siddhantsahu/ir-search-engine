@@ -43,10 +43,10 @@ class Driver {
         }
     }
 
-    public static void indexTermStats(SPIMI s) {
+    public static void printIndexTermStats(SPIMI s) {
         Map<String, PostingsEntry> index = s.getInvertedIndex();
-        int maxDf = 0;
-        int minDf = 1400;
+        int maxDf = Integer.MIN_VALUE;
+        int minDf = Integer.MAX_VALUE;
         String termMaxDf = "";
         List<String> termsMinDf = new ArrayList<>();
         // iterate over terms and compute max and min df
@@ -70,7 +70,7 @@ class Driver {
                 ", termsWithMinDf = " + termsMinDf + "");
     }
 
-    public static void indexDocumentStats(SPIMI s) {
+    public static void printIndexDocumentStats(SPIMI s) {
         Map<Integer, DocumentInfo> docInfo = s.getDocInfo();
         int docWithMaxTf = -1;
         int docWithMaxDocLen = -1;
@@ -104,7 +104,6 @@ class Driver {
     }
 
     public static void main(String[] args) throws IOException {
-        // parse arguments, args[0] should be stem or lemma
         boolean useStemming = args[0].equalsIgnoreCase("stem") ? true : false;
         String folder = args[1];    // folder having text documents
         String outFolder = args[2];   // store the binary files in this directory
@@ -127,17 +126,17 @@ class Driver {
 
         // print statistics for words
         List<String> terms = Arrays.asList("reynolds", "nasa", "prandtl", "flow", "pressure", "boundary", "shock");
-        for (String t : terms) {
-            if (useStemming) {
+        if (useStemming) {
+            for (String t : terms) {
                 t = Indexer.stemWord(t);
+                printTermInformation(spimi, t);
             }
-            printTermInformation(spimi, t);
         }
 
         printTermDocInformation(spimi, "nasa");
 
-        indexTermStats(spimi);
+        printIndexTermStats(spimi);
 
-        indexDocumentStats(spimi);
+        printIndexDocumentStats(spimi);
     }
 }

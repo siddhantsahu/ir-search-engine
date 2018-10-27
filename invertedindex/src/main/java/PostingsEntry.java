@@ -19,9 +19,11 @@ public class PostingsEntry {
     }
 
     public PostingsEntry update(int docId) {
+        if (!this.postingsList.containsKey(docId)) {
+            this.documentFrequency += 1;
+        }
         this.postingsList.putIfAbsent(docId, 1);
         this.postingsList.computeIfPresent(docId, (k, v) -> v + 1);
-        this.documentFrequency += 1;
         return this;
     }
 

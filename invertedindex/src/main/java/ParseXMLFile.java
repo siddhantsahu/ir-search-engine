@@ -2,9 +2,15 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+/**
+ * Parses a document in the collection to extract only text fields and discard fields containing only numbers.
+ */
 public class ParseXMLFile extends DefaultHandler {
     private boolean title = false;
     private boolean text = false;
+    private boolean author = false;
+    private boolean biblio = false;
+
     private StringBuilder textField = new StringBuilder();
 
     public StringBuilder getTextField() {
@@ -22,6 +28,12 @@ public class ParseXMLFile extends DefaultHandler {
             case "title":
                 title = true;
                 break;
+            case "author":
+                author = true;
+                break;
+            case "biblio":
+                biblio = true;
+                break;
         }
     }
 
@@ -35,6 +47,12 @@ public class ParseXMLFile extends DefaultHandler {
             case "title":
                 title = false;
                 break;
+            case "author":
+                author = false;
+                break;
+            case "biblio":
+                biblio = false;
+                break;
         }
     }
 
@@ -47,8 +65,14 @@ public class ParseXMLFile extends DefaultHandler {
         } else if (text) {
             String textLine = new String(ch, start, length);
             textField.append(textLine);
+        } else if (biblio) {
+            String biblioLine = new String(ch, start, length);
+            textField.append(biblioLine);
+        } else if (author) {
+            String authorLine = new String(ch, start, length);
+            textField.append(authorLine);
         } else {
-            // ignore the other tags
+            // ignore
         }
     }
 }
