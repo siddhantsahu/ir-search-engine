@@ -17,7 +17,7 @@ public class Indexer {
     private static Stemmer stemmer = new Stemmer();
     private static Map<String, String> stemLookup = new HashMap<>();    // to cache stemmer results
 
-    private static String stemWord(String word) {
+    public static String stemWord(String word) {
         String result = stemLookup.getOrDefault(word, stemmer.stem(word));
         stemLookup.putIfAbsent(word, result);
         return result;
@@ -38,7 +38,7 @@ public class Indexer {
         int docId = 1;
 
         for (String file : files) {
-            File doc = new File(Paths.get(folder, file).toString());
+            File doc = Paths.get(folder, file).toFile();
             // process one file
             SAXParserFactory factory = SAXParserFactory.newInstance();
             ParseXMLFile cranfield = new ParseXMLFile();

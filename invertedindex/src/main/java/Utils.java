@@ -150,11 +150,11 @@ public class Utils {
                 termBytes = new String(commonPrefix + "*" +  // * marks end of prefix
                         Utils.slice_start(block.get(i), prefixLength)).getBytes();
             } else {
-                String extraCharacters = Utils.slice_start(block.get(i), prefixLength); // after stripping prefix
+                String extraCharacters = "|" + Utils.slice_start(block.get(i), prefixLength); // after stripping prefix
                 len = (byte) extraCharacters.length();
                 termBytes = extraCharacters.getBytes();
             }
-            // TODO: write diamond character
+
             lenBytes = ByteBuffer.allocate(1).put(len).array();
             outStream.write(lenBytes);
             outStream.write(termBytes);

@@ -1,4 +1,6 @@
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 
 class Driver {
@@ -90,6 +92,17 @@ class Driver {
         System.out.println("docWithMaxDocLen = " + docWithMaxDocLen);
     }
 
+    public static long getSizeOfIndex(String folder, String prefix) {
+        // for simplicity, assuming file name contract remains
+        String[] files = {prefix + ".index", prefix + ".docinfo", prefix + ".pointers"};
+        long sizeInBytes = 0;
+        for (String f : files) {
+            File fp = Paths.get(folder, f).toFile();
+            sizeInBytes += fp.length(); // returns size in bytes
+        }
+        return sizeInBytes;
+    }
+
     public static void main(String[] args) throws IOException {
         // parse arguments, args[0] should be stem or lemma
         boolean useStemming = args[0].equalsIgnoreCase("stem") ? true : false;
@@ -102,9 +115,22 @@ class Driver {
         long timeElapsed = (end - start) / 1000;
         System.out.println("Time (in seconds) to build index using " + args[0] + " = " + timeElapsed);
 
-        // print statistics for lemmas
+        // number of inverted lists, i.e. number of terms
+        System.out.println("Number of inverted lists = " + spimi.getInvertedIndex().size());
+
+        // print size of index = size of pointers file + doc info + dictionary & postings
+        String[] indexPrefixes = {"uncompressed", "compressed.gamma", "compressed.delta.frontcoding"};
+        for (String ip : indexPrefixes) {
+            System.out.println("Size of " + ip + " = " +
+                    getSizeOfIndex(Paths.get("", outFolder).toString(), ip));
+        }
+
+        // print statistics for words
         List<String> terms = Arrays.asList("reynolds", "nasa", "prandtl", "flow", "pressure", "boundary", "shock");
         for (String t : terms) {
+            if (useStemming) {
+                t = Indexer.stemWord(t);
+            }
             printTermInformation(spimi, t);
         }
 
