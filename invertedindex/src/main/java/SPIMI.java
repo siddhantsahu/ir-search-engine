@@ -1,5 +1,7 @@
-import java.io.*;
-import java.nio.ByteBuffer;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,10 +28,18 @@ public class SPIMI {
         }
     }
 
+    public Map<Integer, DocumentInfo> getDocInfo() {
+        return docInfo;
+    }
+
+    public Map<String, PostingsEntry> getInvertedIndex() {
+        return invertedIndex;
+    }
+
     private void addToDictionary(String term, Integer docId) {
-        // update document info before proceeding
+        // update document info with term before proceeding (stopwords are counted in doc length)
         docInfo.putIfAbsent(docId, new DocumentInfo());
-        docInfo.computeIfPresent(docId, (k, v) -> v.update(1)); // term is not seen before
+        docInfo.computeIfPresent(docId, (k, v) -> v.update(1));
         // if not stopword, add to dictionary
         if (!STOPWORDS.contains(term)) {
             PostingsEntry p = new PostingsEntry(docId);
@@ -50,77 +60,6 @@ public class SPIMI {
             addToDictionary(term, docId);
         }
         invertedIndex.computeIfPresent(term, (k, v) -> addToPostingList(v, docId));
-    }
-
-    private byte[] postingListToBytes(LinkedHashMap<Integer, Integer> m) {
-        byte[] result = new byte[m.size() * 2 * 4];
-        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
-            byte[] docIdBytes = Utils.intToBytes(entry.getKey());
-            byte[] tfBytes = Utils.intToBytes(entry.getValue());
-            System.arraycopy(docIdBytes, 0, result, 0, docIdBytes.length);
-            System.arraycopy(tfBytes, 0, result, docIdBytes.length, tfBytes.length);
-        }
-        return result;
-    }
-
-    private byte[] compressedPostingListToBytes(LinkedHashMap<Integer, Integer> m, String compressionCode)
-            throws IOException {
-        // https://stackoverflow.com/a/9133993/2986835
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        int previousDocId = -1; // -1 means there is no previous doc id
-        // write compressed posting list for current term
-        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
-            // key is doc id and value is term frequency
-            byte[] docIdBytes;
-            if (previousDocId == -1) {  // first doc, so write doc id instead of gaps
-                docIdBytes = Utils.intToBytes(entry.getKey());
-            } else {    // write gaps
-                int gap = entry.getKey() - previousDocId;
-                docIdBytes = Utils.gapToBytes(gap, compressionCode);
-            }
-            byte[] tfBytes = Utils.intToBytes(entry.getValue());
-            outStream.write(docIdBytes);
-            outStream.write(tfBytes);
-            previousDocId = entry.getKey(); // update previous doc id for next iteration
-        }
-        return outStream.toByteArray();
-    }
-
-    private byte[] blockOfTermsToBytes(List<String> block) throws IOException {
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        for (String term : block) {
-            byte len = (byte) term.length();    // max length around 25
-            byte[] lenBytes = ByteBuffer.allocate(1).put(len).array();  // store length of term
-            byte[] termBytes = term.getBytes();
-            outStream.write(lenBytes);
-            outStream.write(termBytes);
-        }
-        return outStream.toByteArray();
-    }
-
-    private byte[] frontCodedBlockToBytes(List<String> block) throws IOException {
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        String commonPrefix = Utils.longestCommonPrefix(block.toArray(new String[0]));
-        int prefixLength = commonPrefix.length();
-        for (int i = 0; i < block.size(); i++) {
-            // for the first term, write prefix followed by a *
-            byte len;
-            byte[] lenBytes;
-            byte[] termBytes;
-            if (i == 0) {
-                len = (byte) block.get(i).length();
-                termBytes = new String(commonPrefix + "*" +  // * marks end of prefix
-                        Utils.slice_start(block.get(i), prefixLength)).getBytes();
-            } else {
-                String extraCharacters = Utils.slice_start(block.get(i), prefixLength); // after stripping prefix
-                len = (byte) extraCharacters.length();
-                termBytes = extraCharacters.getBytes();
-            }
-            lenBytes = ByteBuffer.allocate(1).put(len).array();
-            outStream.write(lenBytes);
-            outStream.write(termBytes);
-        }
-        return outStream.toByteArray();
     }
 
     private void docInfoToDisk(Path p) throws IOException {
@@ -166,7 +105,7 @@ public class SPIMI {
             Integer currentFilePosition = 0;
             for (Map.Entry<String, PostingsEntry> entry : invertedIndex.entrySet()) {
                 byte[] termBytes = Utils.stringToFixedWidthBytes(entry.getKey(), fixedWidth);
-                byte[] postingBytes = this.postingListToBytes(entry.getValue().getPostingsList());
+                byte[] postingBytes = Utils.postingListToBytes(entry.getValue().getPostingsList());
                 byte[] documentFrequency = Utils.intToBytes(entry.getValue().getDocumentFrequency());
                 // update references to terms and postings
                 ref.write(documentFrequency);
@@ -225,9 +164,9 @@ public class SPIMI {
                     if (!blockOfTerms.isEmpty()) {
                         byte[] compressedBlock;
                         if (!frontCodingEnabled) {
-                            compressedBlock = blockOfTermsToBytes(blockOfTerms);
+                            compressedBlock = Utils.blockOfTermsToBytes(blockOfTerms);
                         } else {
-                            compressedBlock = frontCodedBlockToBytes(blockOfTerms);
+                            compressedBlock = Utils.frontCodedBlockToBytes(blockOfTerms);
                         }
                         out.write(compressedBlock);
                         currentFilePosition += compressedBlock.length;
@@ -243,7 +182,7 @@ public class SPIMI {
             for (PostingsEntry p : invertedIndex.values()) { // order of values correspond to keys, because TreeMap
                 documentFrequencies.add(p.getDocumentFrequency());
                 postingReferences.add(currentFilePosition);
-                byte[] postingBytes = this.compressedPostingListToBytes(p.getPostingsList(), compressionCode);
+                byte[] postingBytes = Utils.compressedPostingListToBytes(p.getPostingsList(), compressionCode);
                 out.write(postingBytes);
                 currentFilePosition += postingBytes.length;
             } // end writing posting list

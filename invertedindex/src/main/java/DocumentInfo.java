@@ -6,8 +6,16 @@ public class DocumentInfo {
     private int docLen;
 
     public DocumentInfo() {
-        this.maxTf = 0;
-        this.docLen = 0;
+        this.maxTf = 1;
+        this.docLen = 1;
+    }
+
+    public int getMaxTf() {
+        return maxTf;
+    }
+
+    public int getDocLen() {
+        return docLen;
     }
 
     public DocumentInfo update(int tf) {

@@ -10,6 +10,7 @@ import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class Indexer {
@@ -22,14 +23,10 @@ public class Indexer {
         return result;
     }
 
-    public static void main(String args[]) throws IOException {
-        // parse arguments
-        boolean useStemming = args[0].equalsIgnoreCase("stem") ? true : false;
-        String folder = args[1];    // folder having text documents
-        String outFolder = args[2];   // store the binary files in this directory
-
+    public static SPIMI buildIndex(String folder, String outFolder, boolean useStemming) throws IOException {
         File collection = new File(folder);
-        File[] files = collection.listFiles();
+        String[] files = collection.list(); // in random order
+        Arrays.sort(files);
 
         SPIMI spimi = new SPIMI(outFolder);
 
@@ -38,11 +35,10 @@ public class Indexer {
         props.setProperty("annotators", "tokenize,ssplit,pos,lemma");
         StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
 
-        Set<String> terms = new TreeSet<>();
-
         int docId = 1;
 
-        for (File doc : files) {
+        for (String file : files) {
+            File doc = new File(Paths.get(folder, file).toString());
             // process one file
             SAXParserFactory factory = SAXParserFactory.newInstance();
             ParseXMLFile cranfield = new ParseXMLFile();
@@ -84,5 +80,7 @@ public class Indexer {
         spimi.createUncompressedIndex();
         spimi.createCompressedIndex(8, "gamma", false);
         spimi.createCompressedIndex(8, "delta", true);
+
+        return spimi;
     }
 }

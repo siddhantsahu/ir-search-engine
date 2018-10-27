@@ -1,5 +1,10 @@
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Utils {
     public static byte[] stringToFixedWidthBytes(String str, int width) {
@@ -9,6 +14,7 @@ public class Utils {
     }
 
     public static String slice_start(String s, int startIndex) {
+        // https://stackoverflow.com/a/17307852/2986835
         if (startIndex < 0) startIndex = s.length() + startIndex;
         return s.substring(startIndex);
     }
@@ -21,7 +27,7 @@ public class Utils {
 
     public static BitSet bitsetFromString(String binary) {
         // https://stackoverflow.com/a/33386777/2986835
-        // when read from left to right, usual scenario, can be directly applied to gamma codes
+        // r-l orientation
         BitSet bitset = new BitSet(binary.length());
         int len = binary.length();
         for (int i = len - 1; i >= 0; i--) {
@@ -83,5 +89,78 @@ public class Utils {
         byte[] bytes = new byte[(bs.length() + 7) / 8]; // https://stackoverflow.com/a/6197426/2986835
         return bytes;
     }
+
+    public static byte[] postingListToBytes(LinkedHashMap<Integer, Integer> m) {
+        byte[] result = new byte[m.size() * 2 * 4];
+        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
+            byte[] docIdBytes = Utils.intToBytes(entry.getKey());
+            byte[] tfBytes = Utils.intToBytes(entry.getValue());
+            System.arraycopy(docIdBytes, 0, result, 0, docIdBytes.length);
+            System.arraycopy(tfBytes, 0, result, docIdBytes.length, tfBytes.length);
+        }
+        return result;
+    }
+
+    public static byte[] compressedPostingListToBytes(LinkedHashMap<Integer, Integer> m, String compressionCode)
+            throws IOException {
+        // https://stackoverflow.com/a/9133993/2986835
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        int previousDocId = -1; // -1 means there is no previous doc id
+        // write compressed posting list for current term
+        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
+            // key is doc id and value is term frequency
+            byte[] docIdBytes;
+            if (previousDocId == -1) {  // first doc, so write doc id instead of gaps
+                docIdBytes = Utils.intToBytes(entry.getKey());
+            } else {    // write gaps
+                int gap = entry.getKey() - previousDocId;
+                docIdBytes = Utils.gapToBytes(gap, compressionCode);
+            }
+            byte[] tfBytes = Utils.intToBytes(entry.getValue());
+            outStream.write(docIdBytes);
+            outStream.write(tfBytes);
+            previousDocId = entry.getKey(); // update previous doc id for next iteration
+        }
+        return outStream.toByteArray();
+    }
+
+    public static byte[] blockOfTermsToBytes(List<String> block) throws IOException {
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        for (String term : block) {
+            byte len = (byte) term.length();    // max length around 25
+            byte[] lenBytes = ByteBuffer.allocate(1).put(len).array();  // store length of term
+            byte[] termBytes = term.getBytes();
+            outStream.write(lenBytes);
+            outStream.write(termBytes);
+        }
+        return outStream.toByteArray();
+    }
+
+    public static byte[] frontCodedBlockToBytes(List<String> block) throws IOException {
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        String commonPrefix = Utils.longestCommonPrefix(block.toArray(new String[0]));
+        int prefixLength = commonPrefix.length();
+        for (int i = 0; i < block.size(); i++) {
+            // for the first term, write prefix followed by a *
+            byte len;
+            byte[] lenBytes;
+            byte[] termBytes;
+            if (i == 0) {
+                len = (byte) block.get(i).length();
+                termBytes = new String(commonPrefix + "*" +  // * marks end of prefix
+                        Utils.slice_start(block.get(i), prefixLength)).getBytes();
+            } else {
+                String extraCharacters = Utils.slice_start(block.get(i), prefixLength); // after stripping prefix
+                len = (byte) extraCharacters.length();
+                termBytes = extraCharacters.getBytes();
+            }
+            // TODO: write diamond character
+            lenBytes = ByteBuffer.allocate(1).put(len).array();
+            outStream.write(lenBytes);
+            outStream.write(termBytes);
+        }
+        return outStream.toByteArray();
+    }
+
 
 }
