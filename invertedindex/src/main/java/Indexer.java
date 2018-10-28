@@ -46,12 +46,16 @@ public class Indexer {
         String[] files = collection.list(); // in random order
         Arrays.sort(files);
 
+        String mode = useStemming ? "stem" : "lemma";
+
         SPIMI spimi = new SPIMI(outFolder);
 
         // build pipeline for lemmatization
         Properties props = new Properties();
         props.setProperty("annotators", "tokenize,ssplit,pos,lemma");
         StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+
+        long start = System.currentTimeMillis();
 
         int docId = 1;
 
@@ -95,9 +99,22 @@ public class Indexer {
             docId += 1;
         }
 
+        long end = System.currentTimeMillis();
+        long timeElapsed = (end - start) / 1000;
+        System.out.println("Time (in seconds) to build uncompressed index using " + mode + " = " + timeElapsed);
+
         spimi.createUncompressedIndex();
+        start = System.currentTimeMillis();
         spimi.createCompressedIndex(8, "gamma", false);
+        end = System.currentTimeMillis();
+        timeElapsed = end - start;
+        System.out.println("Time (in milli seconds) to write compressed (blocking + gamma) to disk = " + timeElapsed);
+
+        start = System.currentTimeMillis();
         spimi.createCompressedIndex(8, "delta", true);
+        end = System.currentTimeMillis();
+        timeElapsed = end - start;
+        System.out.println("Time (in milli seconds) to write compressed (front-coding + delta) to disk = " + timeElapsed);
 
         return spimi;
     }

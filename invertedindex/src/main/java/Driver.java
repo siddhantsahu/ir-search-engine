@@ -112,7 +112,7 @@ class Driver {
         SPIMI spimi = Indexer.buildIndex(folder, outFolder, useStemming);
         long end = System.currentTimeMillis();
         long timeElapsed = (end - start) / 1000;
-        System.out.println("Time (in seconds) to build index using " + args[0] + " = " + timeElapsed);
+
 
         // number of inverted lists, i.e. number of terms
         System.out.println("Number of inverted lists = " + spimi.getInvertedIndex().size());
