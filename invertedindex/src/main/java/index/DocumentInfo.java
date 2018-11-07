@@ -1,3 +1,7 @@
+package index;
+
+import util.Utils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -32,7 +36,7 @@ public class DocumentInfo {
      * Updates the `maxTf` and `docLen` when a new term is seen.
      *
      * @param tf term frequency of the term seen
-     * @return the current `DocumentInfo` object
+     * @return the current `index.DocumentInfo` object
      */
     public DocumentInfo update(int tf) {
         if (tf > this.maxTf) {
@@ -57,7 +61,7 @@ public class DocumentInfo {
 
     @Override
     public String toString() {
-        return "DocumentInfo{" +
+        return "index.DocumentInfo{" +
                 "maxTf=" + maxTf +
                 ", docLen=" + docLen +
                 '}';

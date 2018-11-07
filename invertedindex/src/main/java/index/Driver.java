@@ -1,3 +1,8 @@
+package index;
+
+import search.QueryParser;
+import util.Utils;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -104,39 +109,14 @@ class Driver {
     }
 
     public static void main(String[] args) throws IOException {
-        boolean useStemming = args[0].equalsIgnoreCase("stem") ? true : false;
-        String folder = args[1];    // folder having text documents
-        String outFolder = args[2];   // store the binary files in this directory
+        boolean useStemming = false;
+        String folder = "/home/siddhant/Documents/Projects/ir_homeworks/tokenizer/Cranfield";    // folder having text documents
+        String outFolder = "/tmp/lemma/";   // store the binary files in this directory
 
-        long start = System.currentTimeMillis();
-        SPIMI spimi = Indexer.buildIndex(folder, outFolder, useStemming);
-        long end = System.currentTimeMillis();
-        long timeElapsed = (end - start) / 1000;
-
-
-        // number of inverted lists, i.e. number of terms
-        System.out.println("Number of inverted lists = " + spimi.getInvertedIndex().size());
-
-        // print size of index = size of pointers file + doc info + dictionary & postings
-        String[] indexPrefixes = {"uncompressed", "compressed.gamma", "compressed.delta.frontcoding"};
-        for (String ip : indexPrefixes) {
-            System.out.println("Size of " + ip + " = " +
-                    getSizeOfIndex(Paths.get("", outFolder).toString(), ip));
-        }
-
-        // print statistics for words
-        List<String> terms = Arrays.asList("reynolds", "nasa", "prandtl", "flow", "pressure", "boundary", "shock");
-        if (useStemming) {
-            for (String t : terms) {
-                t = Indexer.stemWord(t);
-                printTermInformation(spimi, t);
-            }
-        }
-
-        printTermDocInformation(spimi, "nasa");
-
-        printIndexTermStats(spimi);
-
-        printIndexDocumentStats(spimi);
+        SPIMI index = Indexer.buildIndex(folder, outFolder, useStemming);
+        QueryParser search = new QueryParser("what similarity laws must be obeyed when constructing aeroelastic models\n" +
+                "of heated high speed aircraft");
+        Map<String, Integer> parsedQuery = search.parseQuery();
+        search.cosineScore(parsedQuery, index);
     }
 }

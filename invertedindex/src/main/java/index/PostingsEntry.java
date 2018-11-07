@@ -1,3 +1,5 @@
+package index;
+
 import java.util.LinkedHashMap;
 
 public class PostingsEntry {
@@ -29,7 +31,7 @@ public class PostingsEntry {
 
     @Override
     public String toString() {
-        return "PostingsEntry{" +
+        return "index.PostingsEntry{" +
                 "documentFrequency=" + documentFrequency +
                 ", postingsList=" + postingsList +
                 '}';

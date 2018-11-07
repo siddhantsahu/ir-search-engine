@@ -1,3 +1,7 @@
+package index;
+
+import util.Utils;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -14,18 +18,16 @@ import java.util.*;
  * we use a SortedMap instead of a HashMap to avoid sorting the dictionary at the end.
  */
 public class SPIMI {
-    /**
-     * Write the index in this folder.
-     */
-    private final String outFolder;
-
     private static final String[] SET_VALUES = new String[]{"a", "all", "an", "and", "any", "are", "as", "be", "been",
             "but", "by ", "few", "for", "have", "he", "her", "here", "him", "his", "how", "i", "in", "is", "it", "its",
             "many", "me", "my", "none", "of", "on ", "or", "our", "she", "some", "the", "their", "them", "there",
             "they", "that ", "this", "us", "was", "what", "when", "where", "which", "who", "why", "will", "with",
             "you", "your"};
-    private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(SET_VALUES));
-
+    public static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(SET_VALUES));
+    /**
+     * Write the index in this folder.
+     */
+    private final String outFolder;
     /**
      * Maps document id to a data structure storing document related information.
      */
@@ -37,7 +39,7 @@ public class SPIMI {
     private Map<String, PostingsEntry> invertedIndex = new TreeMap<>();
 
     /**
-     * Initializes the SPIMI algorithm.
+     * Initializes the index.SPIMI algorithm.
      *
      * @param outFolder the index files will be stored here
      */
@@ -78,7 +80,7 @@ public class SPIMI {
     /**
      * Updates a term's posting list with the doc id seen. If the doc id is encountered for the first time, it is added
      * to the end of the posting list. Since doc ids are seen in monotonically increasing order, the posting list is
-     * naturally sorted in ascending order. This is one of the key ideas of the SPIMI algorithm.
+     * naturally sorted in ascending order. This is one of the key ideas of the index.SPIMI algorithm.
      *
      * @param pList the existing posting list of the term
      * @param docId the doc id seen in the (term, doc) pair

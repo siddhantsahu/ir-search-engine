@@ -1,11 +1,13 @@
+package preprocess;
+
 import edu.stanford.nlp.ling.Word;
 
 import java.util.function.Function;
 
 /**
- * Stemmer, implementing the Porter Stemming Algorithm
+ * preprocess.Stemmer, implementing the Porter Stemming Algorithm
  * <p/>
- * The Stemmer class transforms a word into its root form.  The input
+ * The preprocess.Stemmer class transforms a word into its root form.  The input
  * word can be provided a character at time (by calling add()), or at once
  * by calling one of the various stem(something) methods.
  *
@@ -535,7 +537,7 @@ public class Stemmer implements Function<Word, Word> {
     }
 
     /**
-     * Stem the word placed into the Stemmer buffer through calls to add().
+     * Stem the word placed into the preprocess.Stemmer buffer through calls to add().
      * Returns true if the stemming process resulted in a word different
      * from the input.  You can retrieve the result with
      * getResultLength()/getResultBuffer() or toString().
