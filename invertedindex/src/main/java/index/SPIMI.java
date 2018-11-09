@@ -1,5 +1,6 @@
 package index;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -7,7 +8,7 @@ import java.util.*;
  * In the original single-pass algorithm, the dictionary is sorted after the program runs out of memory. In this case,
  * we use a SortedMap instead of a HashMap to avoid sorting the dictionary at the end.
  */
-public class SPIMI {
+public class SPIMI implements Serializable {
     private static final String[] SET_VALUES = new String[]{"a", "all", "an", "and", "any", "are", "as", "be", "been",
             "but", "by ", "few", "for", "have", "he", "her", "here", "him", "his", "how", "i", "in", "is", "it", "its",
             "many", "me", "my", "none", "of", "on ", "or", "our", "she", "some", "the", "their", "them", "there",
@@ -31,6 +32,25 @@ public class SPIMI {
 
     public Map<String, PostingsEntry> getInvertedIndex() {
         return invertedIndex;
+    }
+
+    public int getDF(String term) {
+        if (!this.invertedIndex.containsKey(term)) {
+            return 0;
+        } else {
+            return this.invertedIndex.get(term).getDocumentFrequency();
+        }
+    }
+
+    public int getMaxTf(int docId) {
+        return this.docInfo.get(docId).getMaxTf();
+    }
+
+    public Map<Integer, TermWeight> getPostingList(String term) {
+        if (!this.invertedIndex.containsKey(term)) {
+            throw new NoSuchElementException("Term not found in dictionary.");
+        }
+        return this.invertedIndex.get(term).getPostingsList();
     }
 
     /**

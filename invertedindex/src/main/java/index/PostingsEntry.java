@@ -1,31 +1,32 @@
 package index;
 
+import java.io.Serializable;
 import java.util.LinkedHashMap;
 
-public class PostingsEntry {
+public class PostingsEntry implements Serializable {
     private int documentFrequency;
-    private LinkedHashMap<Integer, Integer> postingsList;
+    private LinkedHashMap<Integer, TermWeight> postingsList;
 
     public PostingsEntry(int docId) {
         this.documentFrequency = 1;
         this.postingsList = new LinkedHashMap<>(2, 0.99f);
-        this.postingsList.put(docId, 1);
+        this.postingsList.put(docId, new TermWeight());
     }
 
     public int getDocumentFrequency() {
         return documentFrequency;
     }
 
-    public LinkedHashMap<Integer, Integer> getPostingsList() {
-        return postingsList;
+    public LinkedHashMap<Integer, TermWeight> getPostingsList() {
+        return this.postingsList;
     }
 
     public PostingsEntry update(int docId) {
         if (!this.postingsList.containsKey(docId)) {
             this.documentFrequency += 1;
         }
-        this.postingsList.putIfAbsent(docId, 1);
-        this.postingsList.computeIfPresent(docId, (k, v) -> v + 1);
+        this.postingsList.putIfAbsent(docId, new TermWeight());
+        this.postingsList.computeIfPresent(docId, (k, v) -> v.incrementTf());
         return this;
     }
 

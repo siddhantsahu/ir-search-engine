@@ -1,5 +1,7 @@
 package util;
 
+import index.TermWeight;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -95,24 +97,30 @@ public class Utils {
         return bytes;
     }
 
-    public static byte[] postingListToBytes(LinkedHashMap<Integer, Integer> m) {
+    /**
+     * Converts posting list to bytes. Only uses term frequency.
+     *
+     * @param m posting list
+     * @return byte representation
+     */
+    public static byte[] postingListToBytes(LinkedHashMap<Integer, TermWeight> m) {
         byte[] result = new byte[m.size() * 2 * 4];
-        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
+        for (Map.Entry<Integer, TermWeight> entry : m.entrySet()) {
             byte[] docIdBytes = Utils.intToBytes(entry.getKey());
-            byte[] tfBytes = Utils.intToBytes(entry.getValue());
+            byte[] tfBytes = Utils.intToBytes(entry.getValue().getTf());
             System.arraycopy(docIdBytes, 0, result, 0, docIdBytes.length);
             System.arraycopy(tfBytes, 0, result, docIdBytes.length, tfBytes.length);
         }
         return result;
     }
 
-    public static byte[] compressedPostingListToBytes(LinkedHashMap<Integer, Integer> m, String compressionCode)
+    public static byte[] compressedPostingListToBytes(LinkedHashMap<Integer, TermWeight> m, String compressionCode)
             throws IOException {
         // https://stackoverflow.com/a/9133993/2986835
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
         int previousDocId = -1; // -1 means there is no previous doc id
         // write compressed posting list for current term
-        for (Map.Entry<Integer, Integer> entry : m.entrySet()) {
+        for (Map.Entry<Integer, TermWeight> entry : m.entrySet()) {
             // key is doc id and value is term frequency
             byte[] docIdBytes;
             if (previousDocId == -1) {  // first doc, so write doc id instead of gaps
@@ -121,7 +129,7 @@ public class Utils {
                 int gap = entry.getKey() - previousDocId;
                 docIdBytes = Utils.gapToBytes(gap, compressionCode);
             }
-            byte[] tfBytes = Utils.intToBytes(entry.getValue());
+            byte[] tfBytes = Utils.intToBytes(entry.getValue().getTf());
             outStream.write(docIdBytes);
             outStream.write(tfBytes);
             previousDocId = entry.getKey(); // update previous doc id for next iteration

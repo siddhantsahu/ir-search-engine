@@ -4,11 +4,12 @@ import util.Utils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 
 /**
  * Represents the document information stored for every document id seen in the collection.
  */
-public class DocumentInfo {
+public class DocumentInfo implements Serializable {
     /**
      * Represents the frequency of the term that is seen the most number of times in this document.
      */
@@ -19,9 +20,12 @@ public class DocumentInfo {
      */
     private int docLen;
 
+    private double weightedDocLenSquared;
+
     public DocumentInfo() {
         this.maxTf = 1;
         this.docLen = 1;
+        this.weightedDocLenSquared = 0;
     }
 
     public int getMaxTf() {
@@ -30,6 +34,10 @@ public class DocumentInfo {
 
     public int getDocLen() {
         return docLen;
+    }
+
+    public double getWeightedDocLenSquared() {
+        return weightedDocLenSquared;
     }
 
     /**
@@ -43,6 +51,11 @@ public class DocumentInfo {
             this.maxTf = tf;
         }
         this.docLen += 1;
+        return this;
+    }
+
+    public DocumentInfo updateLenSquared(double sumOfSquares) {
+        this.weightedDocLenSquared += sumOfSquares;
         return this;
     }
 
