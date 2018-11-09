@@ -1,12 +1,14 @@
 package index;
 
-import search.QueryParser;
 import util.Utils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 class Driver {
     public static void printTermInformation(SPIMI s, String term) throws IOException {
@@ -110,13 +112,8 @@ class Driver {
 
     public static void main(String[] args) throws IOException {
         boolean useStemming = false;
-        String folder = "/home/siddhant/Documents/Projects/ir_homeworks/tokenizer/Cranfield";    // folder having text documents
-        String outFolder = "/tmp/lemma/";   // store the binary files in this directory
+        String folder = "/home/siddhant/Documents/Projects/ir_homeworks/tokenizer/Cranfield";
 
-        SPIMI index = Indexer.buildIndex(folder, outFolder, useStemming);
-        QueryParser search = new QueryParser("what similarity laws must be obeyed when constructing aeroelastic models\n" +
-                "of heated high speed aircraft");
-        Map<String, Integer> parsedQuery = search.parseQuery();
-        search.cosineScore(parsedQuery, index);
+        SPIMI index = Indexer.buildIndex(folder, useStemming);
     }
 }
