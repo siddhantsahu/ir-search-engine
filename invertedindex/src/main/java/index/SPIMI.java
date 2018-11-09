@@ -46,6 +46,14 @@ public class SPIMI implements Serializable {
         return this.docInfo.get(docId).getMaxTf();
     }
 
+    public double getTFWeighted(String term, int docId) {
+        if (!this.getPostingList(term).containsKey(docId)) {
+            return 0.0;
+        } else {
+            return this.getPostingList(term).get(docId).getTfWeighted();
+        }
+    }
+
     public Map<Integer, TermWeight> getPostingList(String term) {
         if (!this.invertedIndex.containsKey(term)) {
             throw new NoSuchElementException("Term not found in dictionary.");

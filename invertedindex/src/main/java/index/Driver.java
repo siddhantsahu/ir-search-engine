@@ -3,6 +3,7 @@ package index;
 import search.QueryParser;
 
 import java.io.*;
+import java.util.Map;
 
 class Driver {
     public static void main(String[] args) throws IOException {
@@ -53,6 +54,14 @@ class Driver {
         QueryParser search = new QueryParser("what similarity laws must be obeyed when " +
                 "constructing aeroelastic models of heated high speed aircraft", index);
 
-        System.out.println(search.vectorSpaceModel(search.parseQuery(), 5));
+        Map<String, Integer> queryParsed = search.parseQuery();
+        Map<Integer, Double> top5 = search.vectorSpaceModel(queryParsed, 5);
+
+        System.out.println("top5 = " + top5);
+
+        // get vector representation of top 5 documents and the query
+        for (int d : top5.keySet()) {
+            search.getVector(queryParsed, d);
+        }
     }
 }

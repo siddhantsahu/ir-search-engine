@@ -17,16 +17,15 @@ import java.util.stream.Collectors;
  * A query parser, to convert the query to a vector and compute weights.
  */
 public class QueryParser {
-    private Properties props;
     private StanfordCoreNLP pipeline;
     private String query;
     private SPIMI index;
     private int collectionSize;
 
     public QueryParser(String query, SPIMI index) {
-        props = new Properties();
+        Properties props = new Properties();
         props.setProperty("annotators", "tokenize,ssplit,pos,lemma");
-        pipeline = new StanfordCoreNLP(props);
+        this.pipeline = new StanfordCoreNLP(props);
         this.query = query;
         this.index = index;
         this.collectionSize = this.index.getDocInfo().size();
@@ -37,7 +36,7 @@ public class QueryParser {
 
         // annotate document
         Annotation document = new Annotation(query);
-        pipeline.annotate(document);
+        this.pipeline.annotate(document);
         List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
 
         for (CoreMap sentence : sentences) {
@@ -56,7 +55,7 @@ public class QueryParser {
         return queryTokens;
     }
 
-    public double maxTfWeighting(int tf, int maxTf, int df) {
+    private double maxTfWeighting(int tf, int maxTf, int df) {
         if (tf == 0 || maxTf == 0 || df == 0) {
             return 0.0;
         }
@@ -67,12 +66,11 @@ public class QueryParser {
     public void computeTermWeights() {
         // iterate over the index, compute term weights and document length
         for (Map.Entry<String, PostingsEntry> e : this.index.getInvertedIndex().entrySet()) {
-            String term = e.getKey();
             PostingsEntry pe = e.getValue();
 
             for (Map.Entry<Integer, TermWeight> plEntry : pe.getPostingsList().entrySet()) {
                 int docId = plEntry.getKey();
-                int maxTf = this.index.getDocInfo().get(docId).getMaxTf();
+                int maxTf = this.index.getMaxTf(docId);
                 int tf = plEntry.getValue().getTf();
                 // compute weighted tf
                 double tfWeighted = maxTfWeighting(tf, maxTf, pe.getDocumentFrequency());
@@ -88,7 +86,7 @@ public class QueryParser {
     private double getWeightOfTermInQuery(String term, Map<String, Integer> query) {
         int df = this.index.getDF(term);
         int maxTf = Collections.max(query.values());
-        int tf = query.get(term);
+        int tf = query.getOrDefault(term, 0);
         return maxTfWeighting(tf, maxTf, df);
     }
 
@@ -99,15 +97,19 @@ public class QueryParser {
         for (String term : query.keySet()) {
             double wTQ = getWeightOfTermInQuery(term, query);
             queryLengthSquared += wTQ * wTQ;
-            for (Map.Entry<Integer, TermWeight> entry : this.index.getPostingList(term).entrySet()) {
+            // TODO: handle when posting list is null
+            Map<Integer, TermWeight> postingList = this.index.getPostingList(term);
+            for (Map.Entry<Integer, TermWeight> entry : postingList.entrySet()) {
                 int docId = entry.getKey();
                 double wTD = entry.getValue().getTfWeighted();
-                scores.putIfAbsent(docId, wTD * wTQ);
-                scores.computeIfPresent(docId, (k, v) -> v + wTD * wTQ);
+                double dot = wTD * wTQ;
+                scores.computeIfPresent(docId, (k, v) -> v + dot);
+                scores.putIfAbsent(docId, dot);
             }
         }
 
         double queryLength = Math.sqrt(queryLengthSquared);
+
         // normalize scores by length
         for (Integer docId : scores.keySet()) {
             scores.computeIfPresent(docId,
@@ -121,5 +123,48 @@ public class QueryParser {
                 .limit(topK)
                 .collect(Collectors.toMap(
                         Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+    }
+
+    public double cosineScore(Map<Integer, Double> u, Map<Integer, Double> v) {
+        double dot = 0.0;
+        double l2u = 0.0;
+        double l2v = 0.0;
+        Set<Integer> intersection = new HashSet<Integer>(u.keySet());
+        intersection.retainAll(v.keySet());
+        for (int i : intersection) {
+            dot += u.get(i) * v.get(i);
+        }
+        for (double d : u.values()) {
+            l2u += d * d;
+        }
+        for (double d : v.values()) {
+            l2v += d * d;
+        }
+        return dot / (Math.sqrt(l2u) * Math.sqrt(l2v));
+    }
+
+    public void getVector(Map<String, Integer> query, int docId) {
+        // for simplicity, just consider all terms in dictionary
+        SortedSet<String> allTerms = new TreeSet<>(this.index.getInvertedIndex().keySet());
+        allTerms.addAll(query.keySet());
+
+        // query and doc vector
+        Map<Integer, Double> queryVector = new HashMap<>();
+        Map<Integer, Double> docVector = new HashMap<>();
+
+        int i = 0;
+        for (String term : allTerms) {
+            double wTQ = getWeightOfTermInQuery(term, query);
+            if (wTQ > 0.0) {
+                queryVector.put(i, wTQ);
+            }
+            double wTD = this.index.getTFWeighted(term, docId);
+            if (wTD > 0.0) {
+                docVector.put(i, wTD);
+            }
+            i += 1;
+        }
+
+        System.out.println("cosineScore(" + docId + ") = " + cosineScore(queryVector, docVector));
     }
 }
