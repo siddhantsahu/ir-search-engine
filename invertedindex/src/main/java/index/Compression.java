@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Class to handle compression of indices.
+ */
 public class Compression {
     /**
      * Write the index in this folder.

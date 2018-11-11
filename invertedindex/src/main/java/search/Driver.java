@@ -1,6 +1,7 @@
-package index;
+package search;
 
-import search.QueryParser;
+import index.Indexer;
+import index.SPIMI;
 
 import java.io.*;
 import java.util.Map;
@@ -26,7 +27,7 @@ class Driver {
             in.close();
             file.close();
 
-            System.out.println("Object has been deserialized ");
+            System.out.println("Read index from disk.");
         } catch (IOException ex) {
             System.out.println("Need to re-create index.");
             index = Indexer.buildIndex(folder, useStemming);
@@ -44,24 +45,23 @@ class Driver {
                 System.out.println("Object has been serialized");
 
             } catch (IOException e) {
-                System.out.println("IOException is caught");
+                e.printStackTrace();
             }
         } catch (ClassNotFoundException ex) {
-            System.out.println("ClassNotFoundException is caught");
+            ex.printStackTrace();
         }
         // end serialization
 
         QueryParser search = new QueryParser("what similarity laws must be obeyed when " +
                 "constructing aeroelastic models of heated high speed aircraft", index);
 
-        Map<String, Integer> queryParsed = search.parseQuery();
-        Map<Integer, Double> top5 = search.vectorSpaceModel(queryParsed, 5);
+        Map<Integer, Double> top5 = search.vectorSpaceModel(5, "w2");
 
         System.out.println("top5 = " + top5);
 
         // get vector representation of top 5 documents and the query
         for (int d : top5.keySet()) {
-            search.getVector(queryParsed, d);
+            search.getVector(d);
         }
     }
 }

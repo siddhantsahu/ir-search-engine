@@ -3,6 +3,9 @@ package index;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 
+/**
+ * Represents a posting entry for a term in the dictionary.
+ */
 public class PostingsEntry implements Serializable {
     private int documentFrequency;
     private LinkedHashMap<Integer, TermWeight> postingsList;
@@ -25,8 +28,8 @@ public class PostingsEntry implements Serializable {
         if (!this.postingsList.containsKey(docId)) {
             this.documentFrequency += 1;
         }
-        this.postingsList.putIfAbsent(docId, new TermWeight());
         this.postingsList.computeIfPresent(docId, (k, v) -> v.incrementTf());
+        this.postingsList.putIfAbsent(docId, new TermWeight());
         return this;
     }
 

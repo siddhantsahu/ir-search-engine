@@ -42,6 +42,10 @@ public class SPIMI implements Serializable {
         }
     }
 
+    public int getDocLen(int docId) {
+        return this.docInfo.get(docId).getDocLen();
+    }
+
     public int getMaxTf(int docId) {
         return this.docInfo.get(docId).getMaxTf();
     }
@@ -69,8 +73,8 @@ public class SPIMI implements Serializable {
      */
     private void addToDictionary(String term, Integer docId) {
         // update document info with term before proceeding (stopwords are counted in doc length)
-        docInfo.putIfAbsent(docId, new DocumentInfo());
         docInfo.computeIfPresent(docId, (k, v) -> v.update(1));
+        docInfo.putIfAbsent(docId, new DocumentInfo());
         // if not stopword, add to dictionary
         if (!STOPWORDS.contains(term)) {
             PostingsEntry p = new PostingsEntry(docId);
@@ -89,22 +93,22 @@ public class SPIMI implements Serializable {
      */
     private PostingsEntry addToPostingList(PostingsEntry pList, int docId) {
         PostingsEntry postingList = pList.update(docId);
-        docInfo.putIfAbsent(docId, new DocumentInfo());
         docInfo.computeIfPresent(docId, (k, v) -> v.update(postingList.getDocumentFrequency()));
+        docInfo.putIfAbsent(docId, new DocumentInfo());
         return postingList;
     }
 
     /**
-     * Called for every term, doc pair in the collection.
+     * Called for every term-doc pair in the collection, adds term-doc to index.
      *
      * @param term  term
      * @param docId doc id
      */
     public void invert(String term, Integer docId) {
         docInfo.putIfAbsent(docId, new DocumentInfo());
+        invertedIndex.computeIfPresent(term, (k, v) -> addToPostingList(v, docId));
         if (!invertedIndex.containsKey(term)) {
             addToDictionary(term, docId);
         }
-        invertedIndex.computeIfPresent(term, (k, v) -> addToPostingList(v, docId));
     }
 }
