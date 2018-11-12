@@ -39,6 +39,29 @@ public class Indexer {
     }
 
     /**
+     * Helper function to parse a cranfield document.
+     *
+     * @param doc File object of the document
+     * @return ParseXMLFile object of the document
+     * @throws IOException
+     */
+    public static ParseXMLFile parseCranfieldDocument(File doc) throws IOException {
+        // process one file
+        SAXParserFactory factory = SAXParserFactory.newInstance();
+        ParseXMLFile cranfield = new ParseXMLFile();
+        try {
+            SAXParser saxParser = factory.newSAXParser();
+            saxParser.parse(doc, cranfield);
+            // annotate and process terms in text
+        } catch (ParserConfigurationException e1) {
+            e1.printStackTrace();
+        } catch (SAXException e2) {
+            e2.printStackTrace();
+        }
+        return cranfield;
+    }
+
+    /**
      * Utility function to build the index using lemmas or stems.
      *
      * @param folder      folder containing the documents to be indexed
@@ -66,18 +89,7 @@ public class Indexer {
 
         for (String file : files) {
             File doc = Paths.get(folder, file).toFile();
-            // process one file
-            SAXParserFactory factory = SAXParserFactory.newInstance();
-            ParseXMLFile cranfield = new ParseXMLFile();
-            try {
-                SAXParser saxParser = factory.newSAXParser();
-                saxParser.parse(doc, cranfield);
-                // annotate and process terms in text
-            } catch (ParserConfigurationException e1) {
-                e1.printStackTrace();
-            } catch (SAXException e2) {
-                e2.printStackTrace();
-            }
+            ParseXMLFile cranfield = parseCranfieldDocument(doc);
 
             // annotate document
             Annotation document = new Annotation(cranfield.getTextField().toString());

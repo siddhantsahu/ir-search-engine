@@ -51,10 +51,14 @@ public class SPIMI implements Serializable {
     }
 
     public double getTFWeighted(String term, int docId) {
-        if (!this.getPostingList(term).containsKey(docId)) {
+        try {
+            if (!this.getPostingList(term).containsKey(docId)) {
+                return 0.0;
+            } else {
+                return this.getPostingList(term).get(docId).getTfWeighted();
+            }
+        } catch (NoSuchElementException e) {    // term not in dictionary
             return 0.0;
-        } else {
-            return this.getPostingList(term).get(docId).getTfWeighted();
         }
     }
 
@@ -72,11 +76,11 @@ public class SPIMI implements Serializable {
      * @param docId document id the term is found in
      */
     private void addToDictionary(String term, Integer docId) {
-        // update document info with term before proceeding (stopwords are counted in doc length)
-        docInfo.computeIfPresent(docId, (k, v) -> v.update(1));
-        docInfo.putIfAbsent(docId, new DocumentInfo());
+        // update document info with term before proceeding (stopwords are not counted in doc length)
         // if not stopword, add to dictionary
         if (!STOPWORDS.contains(term)) {
+            docInfo.computeIfPresent(docId, (k, v) -> v.update(1));
+            docInfo.putIfAbsent(docId, new DocumentInfo());
             PostingsEntry p = new PostingsEntry(docId);
             invertedIndex.put(term, p);
         }

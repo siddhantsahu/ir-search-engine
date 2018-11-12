@@ -197,22 +197,8 @@ public class QueryParser {
      * @param v vector 2
      * @return cosine similarity, between 0 and 1.0
      */
-    public double cosineScore(Map<Integer, Double> u, Map<Integer, Double> v) {
-        double dot = 0.0;
-        double l2u = 0.0;
-        double l2v = 0.0;
-        Set<Integer> intersection = new HashSet<Integer>(u.keySet());
-        intersection.retainAll(v.keySet());
-        for (int i : intersection) {
-            dot += u.get(i) * v.get(i);
-        }
-        for (double d : u.values()) {
-            l2u += d * d;
-        }
-        for (double d : v.values()) {
-            l2v += d * d;
-        }
-        return dot / (Math.sqrt(l2u) * Math.sqrt(l2v));
+    public double cosineScore(SparseVector u, SparseVector v) {
+        return u.dotProduct(v) / u.getMagnitude() / v.getMagnitude();
     }
 
     /**
@@ -220,14 +206,15 @@ public class QueryParser {
      *
      * @param docId document id
      */
-    public void getVector(int docId) {
+    public List<SparseVector> getVectors(int docId) {
         // for simplicity, just consider all terms in dictionary
         SortedSet<String> allTerms = new TreeSet<>(this.index.getInvertedIndex().keySet());
         allTerms.addAll(this.query.getTerms());
 
         // query and doc vector
-        Map<Integer, Double> queryVector = new HashMap<>();
-        Map<Integer, Double> docVector = new HashMap<>();
+        List<String> labels = allTerms.stream().collect(Collectors.toList());
+        SparseVector queryVector = new SparseVector(labels);
+        SparseVector docVector = new SparseVector(labels);
 
         int i = 0;
         for (String term : allTerms) {
@@ -242,8 +229,6 @@ public class QueryParser {
             i += 1;
         }
 
-        System.out.println("queryVector = " + queryVector);
-        System.out.println("docVector = " + docVector);
-        System.out.println("cosineScore(" + docId + ") = " + cosineScore(queryVector, docVector));
+        return Arrays.asList(queryVector, docVector);
     }
 }

@@ -13,7 +13,12 @@ public class ParseXMLFile extends DefaultHandler {
     private boolean author = false;
     private boolean biblio = false;
 
+    private StringBuilder titleField = new StringBuilder();
     private StringBuilder textField = new StringBuilder();
+
+    public StringBuilder getTitleField() {
+        return titleField;
+    }
 
     public StringBuilder getTextField() {
         return textField;
@@ -60,9 +65,9 @@ public class ParseXMLFile extends DefaultHandler {
 
     @Override
     public void characters(char ch[], int start, int length) throws SAXException {
-
         if (title) {
             String titleLine = new String(ch, start, length);
+            titleField.append(titleLine);
             textField.append(titleLine);
         } else if (text) {
             String textLine = new String(ch, start, length);
