@@ -1,20 +1,13 @@
-## Inverted Index
+## Search Engine
 
-This is a module to build and compress an inverted index on a collection of documents using the single pass in-memory indexing algorithm (SPIMI).
+**Indexing:** Build and compress an inverted index on a collection of documents using the single pass in-memory indexing algorithm (SPIMI).
+**Retrieval:** Implements the vector space model and a variant of the popular Okapi BM25 ranking model for searching.
 
-### How to run (tested on csgrads1 server)?
-*Requires Java 8*
-1. Extract the source code to an appropriate location.
-2. Add CoreNLP libraries to classpath using `source /usr/local/corenlp350/classpath.sh`. After this $CLASSPATH should be set. Run `echo $CLASSPATH` to verify.
-3. Build the project: `javac -cp $CLASSPATH -d target/classes/ src/main/java/*`. This puts the generated class files in `target/classes/` directory.
-4. Go to `classes` directory: `cd target/classes/`
-5. Then, run the main class, `Driver` as follows: `java Driver <lemma or stem> <path to cranfield collection> <output folder to store binary files>`.
+This search engine has been tested on the cranfield collection.
 
-Use the following two commands to generate indexes (3 indexes each) for lemma and stem versions.
-`java Driver lemma /people/cs/s/sanda/cs6322/Cranfield/ ../../lemma/`
-`java Driver stem /people/cs/s/sanda/cs6322/Cranfield/ ../../stem/`
+> The Cranfield collection. This was the pioneering test collection in allowing precise quantitative measures of information retrieval effectiveness, but is nowadays too small for anything but the most elementary pilot experiments. Collected in the United Kingdom starting in the late 1950s, it contains 1398 abstracts of aerodynamics journal articles, a set of 225 queries, and exhaustive relevance judgments of all (query, document) pairs.
 
-### How does it work?
+### How does indexing work?
 
 #### High level description
 
@@ -37,4 +30,16 @@ Use the following two commands to generate indexes (3 indexes each) for lemma an
     + Uncompressed index as binary file: In the uncompressed version, the posting list immediately follows the fixed-width term. Thus, the uncompressed index file is a sequence of term and posting list pairs.
     + Compressed index as binary file: In the compressed version, all the terms are stored first followed by all the postings lists for these terms.
 
-**Note:** The statistics and outputs are printed on the console with every run of the program. But, for convinience viewing, they are annotated and attached in a separate file `stats.md`.
+**Note:** The statistics and outputs are printed on the console with every run of the program. But, for convenience, they are annotated and attached in a separate file `stats.md`.
+
+### Retrieval Models
+
+Two retrieval models are implemented:
+- Variant of max-tf term weighting
+- Variant of Okapi BM25 retrieval model
+
+### Usage
+
+Requirements: Java 8 and IntelliJ Idea (import as Maven project)
+
+Run the `search.Driver` class with cranfield collection path and query file as command line arguments. The *cranfield collection path* is the path to the directory containing the 1400 cranfield files and the query file is a file containing queries separated by newline.
